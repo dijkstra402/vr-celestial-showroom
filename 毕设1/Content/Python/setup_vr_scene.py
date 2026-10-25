@@ -20,30 +20,34 @@ import unreal
 ASSET_GROUPS = [
     {
         "folder": "/Game/zhuti",
+        "tex_color_name": "T_Zhuti_Color",
         "mat_name": "M_Zhuti_PBR",
         "meshes": ["/Game/zhuti/主体"],
-        "tint": (1.08, 0.96, 0.82),
-        "emissive_strength": 0.08,
+        "tint": (1.0, 1.0, 1.0),
+        "emissive_strength": 0.05,
         "roughness_scale": 0.85,
     },
     {
         "folder": "/Game/pingtai",
+        "tex_color_name": "T_Pingtai_Color",
         "mat_name": "M_Pingtai_PBR",
         "meshes": ["/Game/pingtai/平台"],
-        "tint": (1.06, 0.95, 0.80),
-        "emissive_strength": 0.06,
+        "tint": (1.0, 1.0, 1.0),
+        "emissive_strength": 0.04,
         "roughness_scale": 0.80,
     },
     {
         "folder": "/Game/lianhua",
+        "tex_color_name": "T_Lianhua_Color",
         "mat_name": "M_Lianhua_PBR",
         "meshes": ["/Game/lianhua/莲花"],
-        "tint": (1.12, 0.92, 0.88),
-        "emissive_strength": 0.25,
+        "tint": (1.0, 1.0, 1.0),
+        "emissive_strength": 0.15,
         "roughness_scale": 0.70,
     },
     {
         "folder": "/Game/deng",
+        "tex_color_name": "T_Deng_Color",
         "mat_name": "M_Deng_PBR",
         "meshes": [
             "/Game/deng/010e6e97ccdfb46f14510401fe5f679b",
@@ -54,16 +58,41 @@ ASSET_GROUPS = [
             "/Game/deng/9431a94320f810bae30c4c545ad5b2d9",
             "/Game/deng/bd86a6a94ee1be7a7c174de51ae8800d",
         ],
-        "tint": (1.20, 0.95, 0.65),
-        "emissive_strength": 1.80,
+        "tint": (1.05, 0.98, 0.85),
+        "emissive_strength": 1.60,
         "roughness_scale": 0.65,
     },
 ]
 
 
-def configure_textures(folder):
-    """加载并修正 4 张 PBR 贴图的色彩空间 (sRGB) 与法线压缩格式"""
-    tex_base = unreal.EditorAssetLibrary.load_asset(f"{folder}/texture_pbr_20250901")
+def configure_textures(group):
+    """加载并修正 PBR 贴图色彩空间，支持自动引入最新烘焙的全彩贴图 (T_*_Color)"""
+    folder = group["folder"]
+    tex_color_name = group.get("tex_color_name")
+
+    tex_base = None
+    if tex_color_name:
+        tex_path = f"/Game/Textures/{tex_color_name}"
+        if unreal.EditorAssetLibrary.does_asset_exist(tex_path):
+            tex_base = unreal.EditorAssetLibrary.load_asset(tex_path)
+        else:
+            # 尝试从 Content/Textures/ 自动导入全彩 PNG
+            png_file = unreal.Paths.project_content_dir() + f"Textures/{tex_color_name}.png"
+            if unreal.Paths.file_exists(png_file):
+                task = unreal.AssetImportTask()
+                task.set_editor_property("filename", png_file)
+                task.set_editor_property("destination_path", "/Game/Textures")
+                task.set_editor_property("destination_name", tex_color_name)
+                task.set_editor_property("replace_existing", True)
+                task.set_editor_property("automated", True)
+                task.set_editor_property("save", True)
+                unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+                if unreal.EditorAssetLibrary.does_asset_exist(tex_path):
+                    tex_base = unreal.EditorAssetLibrary.load_asset(tex_path)
+
+    if not tex_base:
+        tex_base = unreal.EditorAssetLibrary.load_asset(f"{folder}/texture_pbr_20250901")
+
     tex_metal = unreal.EditorAssetLibrary.load_asset(f"{folder}/texture_pbr_20250901_metallic")
     tex_rough = unreal.EditorAssetLibrary.load_asset(f"{folder}/texture_pbr_20250901_roughness")
     tex_norm = unreal.EditorAssetLibrary.load_asset(f"{folder}/texture_pbr_20250901_normal")
@@ -93,7 +122,7 @@ def build_pbr_material(group):
     mat_name = group["mat_name"]
     mat_path = f"{folder}/{mat_name}"
 
-    tex_base, tex_metal, tex_rough, tex_norm = configure_textures(folder)
+    tex_base, tex_metal, tex_rough, tex_norm = configure_textures(group)
 
     if unreal.EditorAssetLibrary.does_asset_exist(mat_path):
         mat = unreal.EditorAssetLibrary.load_asset(mat_path)

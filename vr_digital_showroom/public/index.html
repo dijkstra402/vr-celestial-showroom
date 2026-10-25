@@ -27,33 +27,43 @@
   <!-- Top Navigation Header -->
   <header class="glass-panel">
     <div class="brand">
-      <div class="brand-logo">🏯</div>
+      <div class="brand-logo" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L3 7l9 5 9-5-9-5z"/>
+          <path d="M3 12l9 5 9-5"/>
+          <path d="M3 17l9 5 9-5"/>
+        </svg>
+      </div>
       <div class="brand-text">
         <h1>仙阙凌霄 · 虚实共生 VR 数字展厅</h1>
-        <p>毕业设计 / 数字展厅 & VR 沉浸式互动系统</p>
+        <p>毕业设计 / 数字展厅与 VR 沉浸式交互系统</p>
       </div>
     </div>
 
     <div class="nav-actions">
       <!-- Atmosphere Switcher -->
       <button class="btn" id="btn-sky-toggle" title="切换场景天色">
-        <span>☀️ 仙阙晴光</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <span>仙阙晴光</span>
       </button>
 
       <!-- Asset Import (Requirement 4) -->
       <button class="btn" id="btn-open-upload" title="测试导入学院统一美术资源">
-        📦 <span>导入测试资源</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>导入测试资源</span>
       </button>
 
       <!-- Interactive Comments (Requirement 3) -->
       <button class="btn" id="btn-toggle-comments">
-        💬 <span>留言互动</span> <span id="comment-badge" style="background:#f59e0b; color:#0f172a; border-radius:10px; padding:1px 6px; font-size:11px; font-weight:bold;">3</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>留言互动</span>
+        <span id="comment-badge" style="background:#f59e0b; color:#0f172a; border-radius:10px; padding:1px 6px; font-size:11px; font-weight:bold;">3</span>
       </button>
 
       <!-- User Auth (Requirement 3) -->
       <div id="user-section">
         <button class="btn btn-primary" id="btn-login-open">
-          👤 <span>登录 / 注册</span>
+          <span>登录 / 注册</span>
         </button>
       </div>
     </div>
@@ -61,47 +71,47 @@
 
   <!-- Right Floating Tool Controls -->
   <div class="tool-controls">
-    <div class="tool-btn glass-panel" id="btn-cloud-toggle" data-tooltip="切换建筑体积云雾浓度 (仙境云海/清灵微雾)">
-      ☁️
+    <div class="tool-btn glass-panel" id="btn-cloud-toggle" data-tooltip="切换建筑体积云雾浓度 (仙境浓云 / 灵空轻雾 / 晴空)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
     </div>
-    <div class="tool-btn glass-panel" id="btn-spatial-pin" data-tooltip="点击建筑放置 3D 空间图钉评论">
-      📍
+    <div class="tool-btn glass-panel" id="btn-spatial-pin" data-tooltip="点击建筑或平台放置 3D 空间定位评论">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
     </div>
-    <div class="tool-btn glass-panel" id="btn-toggle-labels" data-tooltip="显示/隐藏 3D 空间图钉标签">
-      🏷️
+    <div class="tool-btn glass-panel" id="btn-toggle-labels" data-tooltip="显示 / 隐藏 3D 空间评论标签">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
     </div>
-    <div class="tool-btn glass-panel" id="btn-toggle-barrage" data-tooltip="开启/关闭 实时弹幕">
-      🗨️
+    <div class="tool-btn glass-panel" id="btn-toggle-barrage" data-tooltip="开启 / 关闭 实时弹幕">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="5" y1="18" x2="18" y2="18"/></svg>
     </div>
     <div class="tool-btn glass-panel" id="btn-reset-cam" data-tooltip="重置展厅最佳全景观赏机位">
-      🎯
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
     </div>
-    <div class="tool-btn glass-panel" id="btn-help" data-tooltip="操作与 VR 设备观看指导">
-      ❓
+    <div class="tool-btn glass-panel" id="btn-help" data-tooltip="操作与 VR 设备观看说明">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     </div>
   </div>
 
   <!-- Bottom Multi-Platform VR Mode Switcher (Requirement 2) -->
   <div class="mode-bar glass-panel">
     <button class="btn active" id="mode-orbit">
-      🖥️ <span>漫游导览</span>
+      <span>漫游导览</span>
     </button>
     <button class="btn" id="mode-gyro">
-      📱 <span>手机陀螺仪</span>
+      <span>手机陀螺仪</span>
     </button>
     <button class="btn" id="mode-cardboard">
-      🥽 <span>手机VR双目分屏</span>
+      <span>手机 VR 双目分屏</span>
     </button>
     <button class="btn" id="btn-webxr-trigger">
-      🌐 <span>VR 头显入镜</span>
+      <span>VR 头显入镜</span>
     </button>
   </div>
 
   <!-- Comments & Guestbook Drawer (Requirement 3) -->
   <div class="drawer glass-panel" id="comment-drawer">
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
-      <h3 style="color:var(--primary-gold); font-size:16px;">💬 展厅互动留言簿</h3>
-      <button class="modal-close" id="btn-close-drawer">✕</button>
+      <h3 style="color:var(--primary-gold); font-size:15px; font-weight:600;">展厅互动留言簿</h3>
+      <button class="modal-close" id="btn-close-drawer">×</button>
     </div>
 
     <div class="comment-list" id="comment-list-container">
@@ -124,19 +134,19 @@
     <div class="modal-card glass-panel">
       <div class="modal-header">
         <h2 id="auth-title">用户登录</h2>
-        <button class="modal-close" id="btn-close-auth">✕</button>
+        <button class="modal-close" id="btn-close-auth">×</button>
       </div>
       <div class="form-group">
         <label>用户名</label>
-        <input type="text" id="auth-username" placeholder="请输入用户名 (测试: admin 或 student)">
+        <input type="text" id="auth-username" placeholder="请输入用户名 (默认账号: admin 或 student)">
       </div>
       <div class="form-group">
         <label>密码</label>
-        <input type="password" id="auth-password" placeholder="请输入密码 (测试: 123)">
+        <input type="password" id="auth-password" placeholder="请输入密码 (默认密码: 123)">
       </div>
       <div style="display:flex; gap:10px; margin-top:18px;">
         <button class="btn btn-primary" style="flex:1;" id="btn-auth-submit">登 录</button>
-        <button class="btn" style="flex:1;" id="btn-auth-toggle">去注册账号</button>
+        <button class="btn" style="flex:1;" id="btn-auth-toggle">注册新账号</button>
       </div>
     </div>
   </div>
@@ -145,15 +155,15 @@
   <div class="modal-overlay" id="modal-upload">
     <div class="modal-card glass-panel">
       <div class="modal-header">
-        <h2>📦 学院统一美术资源导入测试</h2>
-        <button class="modal-close" id="btn-close-upload">✕</button>
+        <h2>学院统一美术资源导入测试</h2>
+        <button class="modal-close" id="btn-close-upload">×</button>
       </div>
       <p style="font-size:12px; color:var(--text-dim); margin-bottom:14px; line-height:1.5;">
-        根据学院统一部署要求，支持导入测试 3D 展品模型（.glb / .gltf）或高清展示图档，直接放置在浮空平台展台进行效果检验。
+        支持导入学院统一提供的 3D 展品模型（.glb / .gltf）或高清展示图档（.png / .jpg），直接陈列至对应浮空平台展台进行实时材质与光影效果检验。
       </p>
       <div class="form-group">
         <label>展品名称</label>
-        <input type="text" id="upload-title" placeholder="例如：学院馆藏唐三彩陶马">
+        <input type="text" id="upload-title" placeholder="例如：学院馆藏青铜瑞兽构件">
       </div>
       <div class="form-group">
         <label>展品类别</label>
@@ -167,9 +177,9 @@
       <div class="form-group">
         <label>陈列展示平台</label>
         <select id="upload-platform">
-          <option value="1">第一级平台（迎宾石灯笼迎面展台）</option>
+          <option value="1">第一级平台（迎宾石灯笼前展台）</option>
           <option value="2">第二级平台（中庭过渡展台）</option>
-          <option value="3">第三级平台（天宫主阁下层展台）</option>
+          <option value="3">第三级平台（主阁前广场展台）</option>
         </select>
       </div>
       <div class="form-group">
@@ -184,24 +194,24 @@
   <div class="modal-overlay" id="modal-help">
     <div class="modal-card glass-panel" style="max-width:540px;">
       <div class="modal-header">
-        <h2>ℹ️ 展厅操作与 VR 观看指导</h2>
-        <button class="modal-close" id="btn-close-help">✕</button>
+        <h2>展厅操作与 VR 观看说明</h2>
+        <button class="modal-close" id="btn-close-help">×</button>
       </div>
       <div style="font-size:13px; line-height:1.7; color:#e2e8f0; display:flex; flex-direction:column; gap:12px;">
         <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
-          <h4 style="color:var(--primary-gold); margin-bottom:4px;">🖥️ PC 电脑端</h4>
-          <p>• 鼠标左键按住拖拽：旋转 360° 环视展厅与建筑。<br>
-          • 滚轮缩放：拉近细节查看琉璃瓦、金饰与地台曼陀罗雕纹。<br>
-          • 右侧工具栏：可调节建筑体积云海浓度、开关 3D 图钉标签、放置空间评论。</p>
+          <h4 style="color:var(--primary-gold); margin-bottom:4px;">PC 电脑端操作</h4>
+          <p>• 鼠标左键按住拖拽：360° 环视仙阁主体与三座浮空台。<br>
+          • 鼠标右键拖拽 / 滚轮缩放：平移视角或拉近查看真实 PBR 贴图细节。<br>
+          • 右侧工具栏：可切换建筑四周体积云海浓度、放置 3D 空间定位评论、开关实时弹幕。</p>
         </div>
         <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
-          <h4 style="color:var(--primary-gold); margin-bottom:4px;">📱 手机端 (手机观看效果)</h4>
-          <p>• 底部切换 <b>【📱 手机陀螺仪】</b>：转动手机即可像身处现场一样 360° 全景沉浸环顾。<br>
-          • 底部切换 <b>【🥽 手机VR双目分屏】</b>：自动切换立体左右眼分屏，将手机横屏放入任意便携 VR 眼镜盒 / Google Cardboard 即可享受裸眼 3D VR 漫游。</p>
+          <h4 style="color:var(--primary-gold); margin-bottom:4px;">手机端观看效果</h4>
+          <p>• 底部切换 <b>[手机陀螺仪]</b>：转动手机即可 360° 全景沉浸式环顾。<br>
+          • 底部切换 <b>[手机 VR 双目分屏]</b>：开启左右眼立体视差渲染，将手机横屏放入便携 VR 眼镜盒即可体验 3D VR 漫游。</p>
         </div>
         <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
-          <h4 style="color:var(--primary-gold); margin-bottom:4px;">🌐 专业 VR 头显 (Quest / Pico / Vision Pro)</h4>
-          <p>• 在 VR 头显内置浏览器打开本项目网页，底部点击 <b>【VR 头显入镜】</b> 按钮，即可瞬间沉浸式进入 6DoF 空间天宫！</p>
+          <h4 style="color:var(--primary-gold); margin-bottom:4px;">专业 VR 头显 (Quest / Pico / Vision Pro)</h4>
+          <p>• 在头显浏览器访问本页并点击底部 <b>[VR 头显入镜]</b>，直接启动 WebXR 6DoF 沉浸式空间漫游。</p>
         </div>
       </div>
     </div>
