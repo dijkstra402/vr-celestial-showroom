@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>仙阙凌霄 · 虚实共生 VR 数字展厅</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./js/three.module.js",
+        "three/addons/": "./js/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Realtime Barrage (Bullet comments) -->
+  <div id="barrage-container"></div>
+
+  <!-- 3D Spatial Comment Labels Container -->
+  <div id="labels-container" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:4;"></div>
+
+  <!-- Top Navigation Header -->
+  <header class="glass-panel">
+    <div class="brand">
+      <div class="brand-logo">🏯</div>
+      <div class="brand-text">
+        <h1>仙阙凌霄 · 虚实共生 VR 数字展厅</h1>
+        <p>毕业设计 / 数字展厅 & VR 沉浸式互动系统</p>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <!-- Atmosphere Switcher -->
+      <button class="btn" id="btn-sky-toggle" title="切换场景天色">
+        <span>☀️ 仙阙晴光</span>
+      </button>
+
+      <!-- Asset Import (Requirement 4) -->
+      <button class="btn" id="btn-open-upload" title="测试导入学院统一美术资源">
+        📦 <span>导入测试资源</span>
+      </button>
+
+      <!-- Interactive Comments (Requirement 3) -->
+      <button class="btn" id="btn-toggle-comments">
+        💬 <span>留言互动</span> <span id="comment-badge" style="background:#f59e0b; color:#0f172a; border-radius:10px; padding:1px 6px; font-size:11px; font-weight:bold;">3</span>
+      </button>
+
+      <!-- User Auth (Requirement 3) -->
+      <div id="user-section">
+        <button class="btn btn-primary" id="btn-login-open">
+          👤 <span>登录 / 注册</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Right Floating Tool Controls -->
+  <div class="tool-controls">
+    <div class="tool-btn glass-panel" id="btn-cloud-toggle" data-tooltip="切换建筑体积云雾浓度 (仙境云海/清灵微雾)">
+      ☁️
+    </div>
+    <div class="tool-btn glass-panel" id="btn-spatial-pin" data-tooltip="点击建筑放置 3D 空间图钉评论">
+      📍
+    </div>
+    <div class="tool-btn glass-panel" id="btn-toggle-labels" data-tooltip="显示/隐藏 3D 空间图钉标签">
+      🏷️
+    </div>
+    <div class="tool-btn glass-panel" id="btn-toggle-barrage" data-tooltip="开启/关闭 实时弹幕">
+      🗨️
+    </div>
+    <div class="tool-btn glass-panel" id="btn-reset-cam" data-tooltip="重置展厅最佳全景观赏机位">
+      🎯
+    </div>
+    <div class="tool-btn glass-panel" id="btn-help" data-tooltip="操作与 VR 设备观看指导">
+      ❓
+    </div>
+  </div>
+
+  <!-- Bottom Multi-Platform VR Mode Switcher (Requirement 2) -->
+  <div class="mode-bar glass-panel">
+    <button class="btn active" id="mode-orbit">
+      🖥️ <span>漫游导览</span>
+    </button>
+    <button class="btn" id="mode-gyro">
+      📱 <span>手机陀螺仪</span>
+    </button>
+    <button class="btn" id="mode-cardboard">
+      🥽 <span>手机VR双目分屏</span>
+    </button>
+    <button class="btn" id="btn-webxr-trigger">
+      🌐 <span>VR 头显入镜</span>
+    </button>
+  </div>
+
+  <!-- Comments & Guestbook Drawer (Requirement 3) -->
+  <div class="drawer glass-panel" id="comment-drawer">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+      <h3 style="color:var(--primary-gold); font-size:16px;">💬 展厅互动留言簿</h3>
+      <button class="modal-close" id="btn-close-drawer">✕</button>
+    </div>
+
+    <div class="comment-list" id="comment-list-container">
+      <!-- Dynamic comments rendered here -->
+    </div>
+
+    <div style="margin-top:auto;">
+      <div class="form-group" style="margin-bottom:8px;">
+        <textarea id="comment-input" rows="2" placeholder="发表您的展厅观展评价或交流评论..."></textarea>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px; color:var(--text-dim);" id="comment-current-user">当前身份: 游客观众</span>
+        <button class="btn btn-primary" id="btn-submit-comment">发送评论</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login / Register Modal (Requirement 3) -->
+  <div class="modal-overlay" id="modal-auth">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h2 id="auth-title">用户登录</h2>
+        <button class="modal-close" id="btn-close-auth">✕</button>
+      </div>
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="auth-username" placeholder="请输入用户名 (测试: admin 或 student)">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="auth-password" placeholder="请输入密码 (测试: 123)">
+      </div>
+      <div style="display:flex; gap:10px; margin-top:18px;">
+        <button class="btn btn-primary" style="flex:1;" id="btn-auth-submit">登 录</button>
+        <button class="btn" style="flex:1;" id="btn-auth-toggle">去注册账号</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Asset Import Test Modal (Requirement 4) -->
+  <div class="modal-overlay" id="modal-upload">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h2>📦 学院统一美术资源导入测试</h2>
+        <button class="modal-close" id="btn-close-upload">✕</button>
+      </div>
+      <p style="font-size:12px; color:var(--text-dim); margin-bottom:14px; line-height:1.5;">
+        根据学院统一部署要求，支持导入测试 3D 展品模型（.glb / .gltf）或高清展示图档，直接放置在浮空平台展台进行效果检验。
+      </p>
+      <div class="form-group">
+        <label>展品名称</label>
+        <input type="text" id="upload-title" placeholder="例如：学院馆藏唐三彩陶马">
+      </div>
+      <div class="form-group">
+        <label>展品类别</label>
+        <select id="upload-category">
+          <option value="雕塑造像">雕塑造像 / 3D 构件</option>
+          <option value="传统工艺">传统工艺 / 器物珍宝</option>
+          <option value="建筑构件">建筑构件 / 斗拱瓦当</option>
+          <option value="书画卷轴">书画卷轴 / 平面展档</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>陈列展示平台</label>
+        <select id="upload-platform">
+          <option value="1">第一级平台（迎宾石灯笼迎面展台）</option>
+          <option value="2">第二级平台（中庭过渡展台）</option>
+          <option value="3">第三级平台（天宫主阁下层展台）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>选择美术资源文件 (GLB / GLTF / PNG / JPG)</label>
+        <input type="file" id="upload-file" accept=".glb,.gltf,.png,.jpg,.jpeg">
+      </div>
+      <button class="btn btn-primary" style="width:100%; margin-top:10px;" id="btn-upload-submit">开始导入并测试展示</button>
+    </div>
+  </div>
+
+  <!-- Help & VR Setup Instructions Modal -->
+  <div class="modal-overlay" id="modal-help">
+    <div class="modal-card glass-panel" style="max-width:540px;">
+      <div class="modal-header">
+        <h2>ℹ️ 展厅操作与 VR 观看指导</h2>
+        <button class="modal-close" id="btn-close-help">✕</button>
+      </div>
+      <div style="font-size:13px; line-height:1.7; color:#e2e8f0; display:flex; flex-direction:column; gap:12px;">
+        <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
+          <h4 style="color:var(--primary-gold); margin-bottom:4px;">🖥️ PC 电脑端</h4>
+          <p>• 鼠标左键按住拖拽：旋转 360° 环视展厅与建筑。<br>
+          • 滚轮缩放：拉近细节查看琉璃瓦、金饰与地台曼陀罗雕纹。<br>
+          • 右侧工具栏：可调节建筑体积云海浓度、开关 3D 图钉标签、放置空间评论。</p>
+        </div>
+        <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
+          <h4 style="color:var(--primary-gold); margin-bottom:4px;">📱 手机端 (手机观看效果)</h4>
+          <p>• 底部切换 <b>【📱 手机陀螺仪】</b>：转动手机即可像身处现场一样 360° 全景沉浸环顾。<br>
+          • 底部切换 <b>【🥽 手机VR双目分屏】</b>：自动切换立体左右眼分屏，将手机横屏放入任意便携 VR 眼镜盒 / Google Cardboard 即可享受裸眼 3D VR 漫游。</p>
+        </div>
+        <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
+          <h4 style="color:var(--primary-gold); margin-bottom:4px;">🌐 专业 VR 头显 (Quest / Pico / Vision Pro)</h4>
+          <p>• 在 VR 头显内置浏览器打开本项目网页，底部点击 <b>【VR 头显入镜】</b> 按钮，即可瞬间沉浸式进入 6DoF 空间天宫！</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast"></div>
+
+  <!-- Main Application Script -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

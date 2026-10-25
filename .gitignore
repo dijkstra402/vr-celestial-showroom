@@ -1,0 +1,26 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.log
+
+# Unreal Engine generated folders
+Intermediate/
+Saved/
+DerivedDataCache/
+Binaries/
+Build/
+毕设1/Intermediate/
+毕设1/Saved/
+毕设1/DerivedDataCache/
+毕设1/Binaries/
+
+# Web App temporary files & dependencies
+vr_digital_showroom/node_modules/
+vr_digital_showroom/public/screenshot_test.png
+vr_digital_showroom/public/selenium_*.png
+vr_digital_showroom/data/
