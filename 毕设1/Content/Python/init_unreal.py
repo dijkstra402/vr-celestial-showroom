@@ -29,6 +29,12 @@ def _on_editor_post_tick(delta_time):
     except Exception as exc:
         unreal.log_warning(f"[init_unreal] 自动执行 setup_vr_scene 失败: {exc}")
 
+    try:
+        import setup_vr_login
+        setup_vr_login.run_full_setup()
+    except Exception as exc:
+        unreal.log_warning(f"[init_unreal] 自动执行 setup_vr_login 失败: {exc}")
+
 
 try:
     _tick_handle = unreal.register_slate_post_tick_callback(_on_editor_post_tick)
