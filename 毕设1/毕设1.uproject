@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"EngineAssociation": "5.7",
 	"Category": "",
-	"Description": "",
+	"Description": "凌霄仙阁 VR 数字展厅 (UE5 OpenXR + 自动 PBR 材质与体积云装配)",
 	"Plugins": [
 		{
 			"Name": "OpenXR",
@@ -14,6 +14,18 @@
 		},
 		{
 			"Name": "OpenXRHandTracking",
+			"Enabled": true
+		},
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "EditorScriptingUtilities",
+			"Enabled": true
+		},
+		{
+			"Name": "Volumetrics",
 			"Enabled": true
 		}
 	],
