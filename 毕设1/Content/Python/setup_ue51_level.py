@@ -24,9 +24,24 @@ def run_full_ue51_setup():
 
     asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
 
+    # 0. 检查当前关卡是否已经装配完毕
+    all_actors = unreal.EditorLevelLibrary.get_all_level_actors()
+    has_zhuti = any("SM_Zhuti" in a.get_actor_label() or "zhuti" in a.get_name().lower() for a in all_actors)
+    if has_zhuti:
+        unreal.log("[UE 5.1 Setup] 关卡中已存在仙阁建筑，无需重复装配。")
+        return
+
     # 1. 创建或载入新的 BISHE 关卡
     unreal.log("[UE 5.1 Setup] 1. 正在创建 UE 5.1 原生标准关卡: /Game/BISHE ...")
     try:
+        old_map_path = os.path.join(content_dir, "BISHE.umap")
+        if os.path.exists(old_map_path):
+            try:
+                bak_path = os.path.join(content_dir, "BISHE_57_bak.umap")
+                if not os.path.exists(bak_path):
+                    os.rename(old_map_path, bak_path)
+            except Exception:
+                pass
         unreal.EditorLevelLibrary.new_level("/Game/BISHE")
     except Exception as e:
         unreal.log_warning(f"[UE 5.1 Setup] 新建关卡提示: {e}")
@@ -34,6 +49,13 @@ def run_full_ue51_setup():
     # 2. 导入 OBJ 几何网格体
     imported_meshes = {}
     mesh_names = ["zhuti", "pingtai", "lianhua", "deng"]
+
+    fallbacks = {
+        "zhuti": ["/Game/zhuti/主体", "/Game/zhuti/zhuti"],
+        "pingtai": ["/Game/pingtai/平台", "/Game/pingtai/pingtai"],
+        "lianhua": ["/Game/lianhua/莲花", "/Game/lianhua/lianhua"],
+        "deng": ["/Game/deng/bd86a6a94ee1be7a7c174de51ae8800d", "/Game/deng/3732518bc670cc69757de0549e744697", "/Game/deng/deng"],
+    }
 
     for m_name in mesh_names:
         dest_pkg = f"/Game/Meshes/{m_name}"
@@ -68,6 +90,16 @@ def run_full_ue51_setup():
                     pass
                 imported_meshes[m_name] = mesh_obj
                 unreal.log(f"[UE 5.1 Setup] 成功导入网格体: {dest_pkg}")
+
+        # 备选：如果 OBJ 不存在，自动寻找工程内已有资产
+        if not imported_meshes.get(m_name):
+            for fb_path in fallbacks.get(m_name, []):
+                if unreal.EditorAssetLibrary.does_asset_exist(fb_path):
+                    m_obj = unreal.EditorAssetLibrary.load_asset(fb_path)
+                    if m_obj:
+                        imported_meshes[m_name] = m_obj
+                        unreal.log(f"[UE 5.1 Setup] 使用既有网格体资产: {fb_path}")
+                        break
 
     # 3. 导入 PBR 漫反射全彩纹理与构建 PBR 材质
     unreal.log("[UE 5.1 Setup] 2. 正在编译 4 套 PBR 仙阙光影材质...")
@@ -323,6 +355,10 @@ def run_full_ue51_setup():
     unreal.log("[UE 5.1 Setup] 5. 正在保存关卡 /Game/BISHE (UE 5.1 原生格式)...")
     try:
         unreal.EditorLevelLibrary.save_current_level()
+    except Exception:
+        pass
+    try:
+        unreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True)
     except Exception:
         pass
 
