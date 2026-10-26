@@ -376,6 +376,25 @@ def run_full_setup():
     """一键执行全部 UE5 材质构建、模型赋材质、体积云环绕与关卡保存"""
     unreal.log("==========================================================")
     unreal.log("[VR Setup] 开始自动装配《毕设1》PBR 材质、体积云与 VR 关卡...")
+
+    # 1. 等待资产注册表完成后台扫描索引
+    try:
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        if ar.is_loading_assets():
+            unreal.log("[VR Setup] 正在等待资产注册表扫描完成...")
+            ar.wait_for_completion()
+    except Exception:
+        pass
+
+    # 2. 确保已加载主关卡 BISHE.umap
+    try:
+        world = unreal.EditorLevelLibrary.get_editor_world()
+        if not world or "BISHE" not in world.get_name():
+            unreal.log("[VR Setup] 正在载入主关卡 /Game/BISHE ...")
+            unreal.EditorLevelLibrary.load_level("/Game/BISHE")
+    except Exception as exc:
+        unreal.log_warning(f"[VR Setup] 载入关卡提示: {exc}")
+
     created_mats = {}
     for group in ASSET_GROUPS:
         try:
@@ -389,7 +408,13 @@ def run_full_setup():
 
     try:
         configure_level_scene(created_mats)
-        unreal.EditorLevelLibrary.save_current_level()
+        try:
+            unreal.EditorLoadingAndSavingUtils.save_current_level()
+        except Exception:
+            try:
+                unreal.EditorLevelLibrary.save_current_level()
+            except Exception:
+                pass
         unreal.log("[VR Setup] BISHE.umap 关卡体积云、仙灯与 VR 出生点配置完毕并已保存！")
     except Exception as exc:
         unreal.log_warning(f"[VR Setup] 配置关卡时出错: {exc}")

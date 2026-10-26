@@ -94,7 +94,13 @@ def build_login_material(bg_texture):
     try:
         # 设置材质为 Unlit / Opaque 或 Translucent
         mat.set_editor_property("material_domain", unreal.MaterialDomain.MD_SURFACE)
-        mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MS_UNLIT)
+        try:
+            mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+        except Exception:
+            try:
+                mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MS_UNLIT)
+            except Exception:
+                pass
 
         # 添加纹理采样节点
         if bg_texture:
@@ -204,12 +210,27 @@ def run_full_setup():
     """一键装配 VR 3D 登录注册与身份认证系统全部资产与关卡实体"""
     unreal.log("==========================================================")
     unreal.log("[VR Login Setup] 开始自动装配 VR 3D 身份通行认证系统...")
+
+    # 1. 确保资产注册表完成后台扫描
+    try:
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        if ar.is_loading_assets():
+            ar.wait_for_completion()
+    except Exception:
+        pass
+
     try:
         textures = import_ui_textures()
         bg_tex = textures.get("T_VR_Login_Station_BG")
         build_login_material(bg_tex)
         spawn_vr_login_station()
-        unreal.EditorLevelLibrary.save_current_level()
+        try:
+            unreal.EditorLoadingAndSavingUtils.save_current_level()
+        except Exception:
+            try:
+                unreal.EditorLevelLibrary.save_current_level()
+            except Exception:
+                pass
         unreal.log("[VR Login Setup] VR 3D 登录认证系统装配完毕并已保存关卡！")
     except Exception as exc:
         unreal.log_warning(f"[VR Login Setup] 装配过程异常: {exc}")

@@ -15,9 +15,28 @@ _ticks_waited = 0
 def _on_editor_post_tick(delta_time):
     global _tick_handle, _ticks_waited
     _ticks_waited += 1
-    # 等待编辑器完成初始关卡加载 (约 30 帧)
-    if _ticks_waited < 30:
+
+    # 1. 至少等待编辑器启动初始化 120 帧 (约 2-3 秒)
+    if _ticks_waited < 120:
         return
+
+    # 2. 确保资产注册表完成后台扫描索引
+    try:
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        if ar.is_loading_assets():
+            return  # 仍在扫描索引，继续等待下一次 Tick
+    except Exception:
+        pass
+
+    # 3. 检查主关卡是否已打开
+    try:
+        world = unreal.EditorLevelLibrary.get_editor_world()
+        if not world or "BISHE" not in world.get_name():
+            if _ticks_waited < 300:
+                return  # 等待关卡自动完成流式加载
+            unreal.EditorLevelLibrary.load_level("/Game/BISHE")
+    except Exception:
+        pass
 
     if _tick_handle is not None:
         unreal.unregister_slate_post_tick_callback(_tick_handle)
