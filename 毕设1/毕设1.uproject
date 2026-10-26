@@ -1,8 +1,8 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "5.7",
+	"EngineAssociation": "5.1",
 	"Category": "",
-	"Description": "凌霄仙阁 VR 数字展厅 (UE5 OpenXR + 自动 PBR 材质 + 3D VR 身份登录认证与体积云装配)",
+	"Description": "凌霄仙阁 VR 数字展厅 (UE 5.1 OpenXR + 自动 PBR 材质 + 3D VR 身份登录认证与体积云装配)",
 	"Plugins": [
 		{
 			"Name": "OpenXR",
@@ -26,10 +26,6 @@
 		},
 		{
 			"Name": "Volumetrics",
-			"Enabled": true
-		},
-		{
-			"Name": "HttpBlueprint",
 			"Enabled": true
 		},
 		{
