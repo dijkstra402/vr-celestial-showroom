@@ -24,6 +24,11 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Archive packages
+*.zip
+*.tar.gz
+*.7z
+
 # Web App temporary files & dependencies
 vr_digital_showroom/node_modules/
 vr_digital_showroom/public/screenshot_test.png
