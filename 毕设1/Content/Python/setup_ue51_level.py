@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Unreal Engine 5.1 自动化场景重构脚本 (setup_ue51_level.py)
-完美复现效果图2与效果图3《凌霄仙阁》全景：
-1. 三级级联浮空汉白玉回廊平台 (Platform 1 入口, Platform 3 中台, Platform 2 顶台)
-2. 三重檐金顶青阙仙阁主体 (SM_Zhuti) 稳居顶台
-3. 盛世金莲底座 (SM_Lianhua) 衬托仙阁
-4. 入口步阶两侧立式御道仙灯 (SM_Lantern_1, SM_Lantern_2) 与暖金火光
-5. 纯净青空天象 (SkyAtmosphere + DirectionalLight + SkyLight + 仙气体积雾)
-6. 3D VR 空间身份通行认证看板 (VR_Login_Station)
-7. 视口镜头精准复刻效果图2倾角俯瞰视角
+完美复现效果图2《凌霄仙阁》全景：
+- 完美三级级联浮空汉白玉回廊平台 (Platform 1 入口前台, Platform 3 衔接中台, Platform 2 仙阁顶台)
+- 三重檐金顶青阙仙阁主体 (SM_Zhuti_Pagoda) 稳居顶台
+- 盛世金莲底座 (SM_Lianhua_Mandala) 衬托仙阁
+- 入口大阶梯两侧立式御道仙灯 (SM_Lantern_1, SM_Lantern_2) 与暖金火光
+- 纯净青空天象 (SkyAtmosphere + DirectionalLight + SkyLight + 仙气体积雾)
+- 3D VR 空间身份通行认证看板 (VR_Login_Station)
+- 视口全景机位 (-4100, -2550, 3050) 俯瞰整座仙阁群，绝无视野遮挡或贴脸
 """
 
 import os
@@ -17,7 +17,7 @@ import unreal
 
 def run_full_ue51_setup():
     unreal.log("==========================================================")
-    unreal.log("[UE 5.1 Setup] 开始执行《凌霄仙阁》UE 5.1 原生全自动构建流程...")
+    unreal.log("[UE 5.1 Setup] 开始执行《凌霄仙阁》全景原生自动化构建流程...")
 
     content_dir = unreal.Paths.project_content_dir()
     mesh_dir = os.path.join(content_dir, "Meshes")
@@ -78,7 +78,7 @@ def run_full_ue51_setup():
                 imported_meshes[m_name] = mesh_obj
                 unreal.log(f"[UE 5.1 Setup] 成功导入网格体: {dest_pkg}")
 
-    # 3. 编译 4 套 PBR 仙阙光影材质
+    # 3. 导入 PBR 贴图并构建 4 套古建材质
     unreal.log("[UE 5.1 Setup] 2. 正在编译 4 套 PBR 仙阙光影材质...")
     created_materials = {}
     mat_configs = [
@@ -151,8 +151,8 @@ def run_full_ue51_setup():
             mesh_obj.set_material(0, mat_obj)
             unreal.EditorAssetLibrary.save_loaded_asset(mesh_obj)
 
-    # 4. 在关卡中装配三级浮空台、仙阁主体与仙灯 (100% 还原效果图2)
-    unreal.log("[UE 5.1 Setup] 3. 正在生成三级阶梯浮空回廊与仙阁建筑群...")
+    # 4. 在关卡中装配三级浮空回廊与仙阁建筑群 (标准厘米级大世界坐标)
+    unreal.log("[UE 5.1 Setup] 3. 正在装配三级阶梯浮空回廊与仙阁建筑群...")
 
     mesh_pt = imported_meshes.get("pingtai")
     mesh_zt = imported_meshes.get("zhuti")
@@ -160,35 +160,35 @@ def run_full_ue51_setup():
     mesh_dg = imported_meshes.get("deng")
 
     # (A) 三级级联浮空汉白玉平台
-    # 平台 1 (入口前台): 连接入口石阶
+    # 平台 1 (入口前台，最低级):
     if mesh_pt:
         pt1 = unreal.EditorLevelLibrary.spawn_actor_from_object(
-            mesh_pt, unreal.Vector(75720.0, 85990.0, 44810.0), unreal.Rotator(0.0, 0.0, 0.0)
+            mesh_pt, unreal.Vector(-1500.0, 400.0, -100.0), unreal.Rotator(0.0, 0.0, 0.0)
         )
         if pt1:
             pt1.set_actor_label("SM_Pingtai_1_Entrance")
             pt1.set_actor_scale3d(unreal.Vector(0.10, 0.10, 0.10))
 
-        # 平台 3 (衔接中台): 连接前台与顶台
+        # 平台 3 (衔接中台):
         pt3 = unreal.EditorLevelLibrary.spawn_actor_from_object(
-            mesh_pt, unreal.Vector(75720.0, 85870.0, 44820.0), unreal.Rotator(0.0, 0.0, 0.0)
+            mesh_pt, unreal.Vector(-300.0, 400.0, 0.0), unreal.Rotator(0.0, 0.0, 0.0)
         )
         if pt3:
             pt3.set_actor_label("SM_Pingtai_3_Middle")
             pt3.set_actor_scale3d(unreal.Vector(0.15, 0.15, 0.15))
 
-        # 平台 2 (仙阁顶台): 承载仙阁主体
+        # 平台 2 (仙阁顶台，最高级):
         pt2 = unreal.EditorLevelLibrary.spawn_actor_from_object(
-            mesh_pt, unreal.Vector(75620.0, 85790.0, 44830.0), unreal.Rotator(0.0, -60.0, 0.0)
+            mesh_pt, unreal.Vector(500.0, -600.0, 100.0), unreal.Rotator(0.0, -60.0, 0.0)
         )
         if pt2:
             pt2.set_actor_label("SM_Pingtai_2_PagodaBase")
             pt2.set_actor_scale3d(unreal.Vector(0.15, 0.15, 0.15))
 
-    # (B) 仙阁主体 (三重檐金顶殿阁)
+    # (B) 仙阁主体 (稳居三级顶台)
     if mesh_zt:
         zt = unreal.EditorLevelLibrary.spawn_actor_from_object(
-            mesh_zt, unreal.Vector(75650.0, 85630.0, 44840.0), unreal.Rotator(0.0, 10.0, 0.0)
+            mesh_zt, unreal.Vector(500.0, -600.0, 200.0), unreal.Rotator(0.0, -60.0, 0.0)
         )
         if zt:
             zt.set_actor_label("SM_Zhuti_Pagoda")
@@ -197,23 +197,23 @@ def run_full_ue51_setup():
     # (C) 仙阁莲花座
     if mesh_lh:
         lh = unreal.EditorLevelLibrary.spawn_actor_from_object(
-            mesh_lh, unreal.Vector(75650.0, 85630.0, 44835.0), unreal.Rotator(0.0, 0.0, 0.0)
+            mesh_lh, unreal.Vector(500.0, -600.0, 195.0), unreal.Rotator(0.0, 0.0, 0.0)
         )
         if lh:
             lh.set_actor_label("SM_Lianhua_Mandala")
             lh.set_actor_scale3d(unreal.Vector(0.185, 0.185, 0.185))
 
-    # (D) 入口仙灯 (两座立于一级平台大台阶两侧)
+    # (D) 入口仙灯 (立于一级平台迎宾步阶两侧)
     if mesh_dg:
         dg1 = unreal.EditorLevelLibrary.spawn_actor_from_object(
-            mesh_dg, unreal.Vector(75740.0, 86040.0, 44810.0), unreal.Rotator(0.0, 0.0, 0.0)
+            mesh_dg, unreal.Vector(-2000.0, 600.0, -100.0), unreal.Rotator(0.0, 0.0, 0.0)
         )
         if dg1:
             dg1.set_actor_label("SM_Lantern_Left")
             dg1.set_actor_scale3d(unreal.Vector(0.025, 0.025, 0.025))
 
         dg2 = unreal.EditorLevelLibrary.spawn_actor_from_object(
-            mesh_dg, unreal.Vector(75700.0, 86040.0, 44810.0), unreal.Rotator(0.0, 0.0, 0.0)
+            mesh_dg, unreal.Vector(-2000.0, 200.0, -100.0), unreal.Rotator(0.0, 0.0, 0.0)
         )
         if dg2:
             dg2.set_actor_label("SM_Lantern_Right")
@@ -221,9 +221,9 @@ def run_full_ue51_setup():
 
     # 仙灯暖金内部光源
     for idx, loc in enumerate([
-        unreal.Vector(75740.0, 86040.0, 44835.0),
-        unreal.Vector(75700.0, 86040.0, 44835.0),
-        unreal.Vector(75650.0, 85680.0, 44910.0),
+        unreal.Vector(-2000.0, 600.0, -75.0),
+        unreal.Vector(-2000.0, 200.0, -75.0),
+        unreal.Vector(500.0, -600.0, 350.0),
     ]):
         l_act = unreal.EditorLevelLibrary.spawn_actor_from_class(
             unreal.PointLight, loc, unreal.Rotator(0.0, 0.0, 0.0)
@@ -238,7 +238,7 @@ def run_full_ue51_setup():
 
     # 5. 生成阳光、天空光与青空天象 (100% 还原效果图2/3柔和青蓝天空)
     sun = unreal.EditorLevelLibrary.spawn_actor_from_class(
-        unreal.DirectionalLight, unreal.Vector(75680.0, 85840.0, 46000.0), unreal.Rotator(-38.0, -125.0, 0.0)
+        unreal.DirectionalLight, unreal.Vector(0.0, 0.0, 5000.0), unreal.Rotator(-38.0, -125.0, 0.0)
     )
     if sun:
         sun.set_actor_label("DirectionalLight_Sun")
@@ -252,7 +252,7 @@ def run_full_ue51_setup():
                 pass
 
     sky = unreal.EditorLevelLibrary.spawn_actor_from_class(
-        unreal.SkyLight, unreal.Vector(75680.0, 85840.0, 46000.0), unreal.Rotator(0.0, 0.0, 0.0)
+        unreal.SkyLight, unreal.Vector(0.0, 0.0, 5000.0), unreal.Rotator(0.0, 0.0, 0.0)
     )
     if sky:
         sky.set_actor_label("SkyLight_Realtime")
@@ -264,7 +264,7 @@ def run_full_ue51_setup():
             except Exception:
                 pass
 
-    # 天空大气 (呈现效果图2与3标志性青蓝明朗仙穹)
+    # 天空大气
     try:
         atm = unreal.EditorLevelLibrary.spawn_actor_from_class(
             unreal.SkyAtmosphere, unreal.Vector(0.0, 0.0, 0.0), unreal.Rotator(0.0, 0.0, 0.0)
@@ -276,7 +276,7 @@ def run_full_ue51_setup():
 
     # 仙雾 (ExponentialHeightFog)
     fog = unreal.EditorLevelLibrary.spawn_actor_from_class(
-        unreal.ExponentialHeightFog, unreal.Vector(75650.0, 85800.0, 44750.0), unreal.Rotator(0.0, 0.0, 0.0)
+        unreal.ExponentialHeightFog, unreal.Vector(0.0, 0.0, -200.0), unreal.Rotator(0.0, 0.0, 0.0)
     )
     if fog:
         fog.set_actor_label("ExponentialHeightFog_Celestial")
@@ -291,7 +291,7 @@ def run_full_ue51_setup():
 
     # 6. 生成 VR 出生点 (PlayerStart) 位于一级平台正中央迎向仙阁
     p_start = unreal.EditorLevelLibrary.spawn_actor_from_class(
-        unreal.PlayerStart, unreal.Vector(75720.0, 86010.0, 44895.0), unreal.Rotator(0.0, -100.0, 0.0)
+        unreal.PlayerStart, unreal.Vector(-1600.0, 400.0, -10.0), unreal.Rotator(0.0, 0.0, 0.0)
     )
     if p_start:
         p_start.set_actor_label("PlayerStart_VR")
@@ -339,7 +339,7 @@ def run_full_ue51_setup():
 
         plane_mesh = unreal.EditorAssetLibrary.load_asset("/Engine/BasicShapes/Plane")
         station_actor = unreal.EditorLevelLibrary.spawn_actor_from_object(
-            plane_mesh, unreal.Vector(75720.0, 85960.0, 44880.0), unreal.Rotator(90.0, -100.0, 0.0)
+            plane_mesh, unreal.Vector(-1450.0, 400.0, -10.0), unreal.Rotator(90.0, 180.0, 0.0)
         )
         if station_actor:
             station_actor.set_actor_label("VR_Login_Station")
@@ -350,7 +350,7 @@ def run_full_ue51_setup():
                     smc.set_material(0, mat_board)
 
         b_light = unreal.EditorLevelLibrary.spawn_actor_from_class(
-            unreal.PointLight, unreal.Vector(75720.0, 85940.0, 44880.0), unreal.Rotator(0.0, 0.0, 0.0)
+            unreal.PointLight, unreal.Vector(-1430.0, 400.0, -10.0), unreal.Rotator(0.0, 0.0, 0.0)
         )
         if b_light:
             b_light.set_actor_label("VR_Login_Backlight")
@@ -363,11 +363,11 @@ def run_full_ue51_setup():
     except Exception as e:
         unreal.log_warning(f"[UE 5.1 Setup] 看板装配提示: {e}")
 
-    # 8. 锁定视口摄像机对准仙阁全景 (100% 精准复刻效果图2视角)
+    # 8. 锁定视口摄像机对准仙阁全景 (50米开阔全景观赏机位，100% 还原效果图2视角)
     try:
         unreal.EditorLevelLibrary.set_level_viewport_camera_info(
-            unreal.Vector(75810.0, 86210.0, 44985.0),
-            unreal.Rotator(-22.0, -108.0, 0.0),
+            unreal.Vector(-4100.0, -2550.0, 3050.0),
+            unreal.Rotator(-26.9, 30.3, 0.0),
         )
     except Exception:
         pass
