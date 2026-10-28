@@ -68,6 +68,11 @@ function initScene() {
   controls.maxPolarAngle = Math.PI / 2 + 0.12;
   controls.update();
 
+  window._camera = camera;
+  window._controls = controls;
+  window._scene = scene;
+  window.THREE = THREE;
+
   stereoCamera = new THREE.StereoCamera();
   stereoCamera.aspect = 0.5;
   stereoCamera.eyeSep = 0.064;
@@ -173,6 +178,22 @@ function setupCelestialSky(mode) {
   texture.mapping = THREE.EquirectangularReflectionMapping;
   scene.background = texture;
   scene.environment = texture;
+
+  if (cloudShaderMat) {
+    if (mode === 0) {
+      cloudShaderMat.uniforms.uSunColor.value.set(0xffffff).multiplyScalar(1.25);
+      cloudShaderMat.uniforms.uShadowColor.value.set(0xdbeafe);
+      cloudShaderMat.uniforms.uSkyColor.value.set(0xfff1e6);
+    } else if (mode === 1) {
+      cloudShaderMat.uniforms.uSunColor.value.set(0xffe2b8).multiplyScalar(1.20);
+      cloudShaderMat.uniforms.uShadowColor.value.set(0xd4bfe8);
+      cloudShaderMat.uniforms.uSkyColor.value.set(0xffcfb0);
+    } else {
+      cloudShaderMat.uniforms.uSunColor.value.set(0xdbeafe).multiplyScalar(1.10);
+      cloudShaderMat.uniforms.uShadowColor.value.set(0x6b82a8);
+      cloudShaderMat.uniforms.uSkyColor.value.set(0x8fa8d0);
+    }
+  }
 }
 
 // --- Load Real PBR Texture Set extracted from UE5 (.uasset) ---
@@ -220,6 +241,7 @@ function loadRealUE5Architecture() {
     roughness: 0.72,
     tint: 0xffffff
   });
+
   const matPingtai = loadPBRMaterial('pingtai', {
     metalness: 0.32,
     roughness: 0.74,
@@ -348,167 +370,446 @@ function loadRealUE5Architecture() {
 // =========================================================================
 // --- Volumetric Clouds System (在建筑附近放置体积云) ---
 // =========================================================================
-let cloudPuffs = [];
+// --- Volumetric 3D Cumulus Cloud Formations System (立体雕塑感祥云系统 - 匹配基准画作) ---
+let cloudMeshes = [];
+let cloudShaderMat = null;
+
+function createRealisticCloudTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  // Multi-layered organic cumulus billow cauliflower lobes
+  const lobes = [
+    { x: 512, y: 512, r: 350, a: 1.00 },
+    { x: 440, y: 470, r: 270, a: 0.92 },
+    { x: 590, y: 460, r: 280, a: 0.92 },
+    { x: 370, y: 510, r: 230, a: 0.85 },
+    { x: 660, y: 500, r: 240, a: 0.85 },
+    { x: 512, y: 390, r: 260, a: 0.95 },
+    { x: 410, y: 360, r: 210, a: 0.88 },
+    { x: 620, y: 370, r: 210, a: 0.88 },
+    { x: 512, y: 630, r: 250, a: 0.78 },
+    { x: 390, y: 610, r: 200, a: 0.74 },
+    { x: 640, y: 600, r: 210, a: 0.74 },
+    { x: 300, y: 440, r: 170, a: 0.70 },
+    { x: 730, y: 430, r: 170, a: 0.70 },
+    { x: 512, y: 290, r: 160, a: 0.85 },
+    { x: 320, y: 560, r: 160, a: 0.65 },
+    { x: 700, y: 550, r: 160, a: 0.65 },
+    // Outer fine cauliflower scalloping
+    { x: 260, y: 490, r: 130, a: 0.60 },
+    { x: 770, y: 480, r: 130, a: 0.60 },
+    { x: 430, y: 290, r: 130, a: 0.75 },
+    { x: 600, y: 290, r: 130, a: 0.75 },
+    { x: 350, y: 330, r: 140, a: 0.70 },
+    { x: 680, y: 340, r: 140, a: 0.70 },
+    { x: 450, y: 690, r: 140, a: 0.60 },
+    { x: 580, y: 680, r: 140, a: 0.60 }
+  ];
+
+  lobes.forEach((l) => {
+    const grad = ctx.createRadialGradient(l.x - 14, l.y - 20, 8, l.x, l.y, l.r);
+    grad.addColorStop(0.0, 'rgba(255, 255, 255, ' + l.a + ')');
+    grad.addColorStop(0.38, 'rgba(255, 255, 255, ' + (l.a * 0.90) + ')');
+    grad.addColorStop(0.70, 'rgba(248, 252, 255, ' + (l.a * 0.50) + ')');
+    grad.addColorStop(0.88, 'rgba(235, 245, 255, ' + (l.a * 0.15) + ')');
+    grad.addColorStop(1.0, 'rgba(220, 235, 255, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const cloudVertexShader = `
+  attribute float aPhase;
+  attribute float aBaseOpacity;
+  attribute vec3 aClusterCenter;
+  attribute float aClusterRadius;
+
+  uniform float uTime;
+
+  varying vec2 vUv;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+  varying vec3 vViewDir;
+  varying float vRelativeY;
+  varying float vOpacity;
+  varying float vWorldY;
+
+  void main() {
+    vUv = uv;
+    vOpacity = aBaseOpacity;
+
+    // Instance center in world coordinates
+    vec4 worldCenter = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+    vec3 center = worldCenter.xyz;
+
+    // Organic breathing & gentle wave drift
+    center.y += sin(uTime * 0.55 + aPhase) * 0.22;
+    center.x += cos(uTime * 0.30 + aPhase * 1.3) * 0.22;
+    center.z += sin(uTime * 0.30 + aPhase * 1.1) * 0.22;
+
+    // View-aligned billboard frame
+    vec3 toCam = normalize(cameraPosition - center);
+    vec3 upVec = vec3(0.0, 1.0, 0.0);
+    vec3 rightVec = normalize(cross(upVec, toCam));
+    vec3 trueUp = cross(toCam, rightVec);
+
+    vec3 mScale = vec3(
+      length(vec3(modelMatrix[0].xyz)),
+      length(vec3(modelMatrix[1].xyz)),
+      length(vec3(modelMatrix[2].xyz))
+    );
+
+    vec3 worldPos = center + (position.x * mScale.x) * rightVec + (position.y * mScale.y) * trueUp;
+    vWorldPos = worldPos;
+    vViewDir = toCam;
+    vWorldY = worldPos.y;
+
+    // Calculate dynamic 3D spherical dome normal on billboard
+    vec2 p = uv * 2.0 - 1.0;
+    float r2 = dot(p, p);
+    float z = sqrt(max(0.0, 1.0 - r2));
+    vWorldNormal = normalize(p.x * rightVec + p.y * trueUp + z * toCam);
+
+    // Height relative to cloud cluster center for volumetric vertical self-shadowing
+    vRelativeY = clamp((worldPos.y - aClusterCenter.y) / max(1.2, aClusterRadius), -1.0, 1.0);
+
+    gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
+  }
+`;
+
+const cloudFragmentShader = `
+  uniform sampler2D uCloudTex;
+  uniform vec3 uSunDir;
+  uniform vec3 uSunColor;
+  uniform vec3 uShadowColor;
+  uniform vec3 uSkyColor;
+  uniform float uCloudDensity;
+
+  varying vec2 vUv;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+  varying vec3 vViewDir;
+  varying float vRelativeY;
+  varying float vOpacity;
+  varying float vWorldY;
+
+  void main() {
+    vec4 tex = texture2D(uCloudTex, vUv);
+    if (tex.a < 0.005) discard;
+
+    // 1. Wrapped directional diffuse lighting (Half-Lambert with high wrap for pure luminous clouds)
+    float NdotL = dot(vWorldNormal, uSunDir);
+    float wrap = 0.55;
+    float diffuse = clamp((NdotL + wrap) / (1.0 + wrap), 0.0, 1.0);
+
+    // 2. Vertical ambient shading across cloud cluster (subtle top-to-bottom shading, never dark!)
+    float clusterAO = smoothstep(-1.0, 0.85, vRelativeY) * 0.15 + 0.85;
+
+    // 3. Absolute world height gradient (soft airy gradient)
+    float seaDepth = clamp((vWorldY + 12.0) / 28.0, 0.0, 1.0);
+    float heightAO = mix(0.92, 1.02, seaDepth);
+
+    // 4. Luminous multi-color blend: Pure white sunlight on crests + Soft ethereal sky-periwinkle in shadows
+    vec3 ambientTone = mix(uShadowColor, uSkyColor, 0.50);
+    vec3 litColor = mix(ambientTone, uSunColor, diffuse * 0.65 + 0.35);
+    litColor *= (clusterAO * heightAO);
+
+    // 5. Silver lining forward rim scattering & Subsurface Scattering (golden rim towards sun)
+    float VdotL = max(0.0, dot(vViewDir, -uSunDir));
+    float rim = pow(1.0 - abs(dot(vWorldNormal, vViewDir)), 2.0);
+    vec3 silverLining = uSunColor * (rim * VdotL * 0.45);
+
+    // 6. Morning sunrise golden glow for clouds on the sunlit left flank
+    float sunSideGlow = clamp((-vWorldPos.x + 18.0) / 45.0, 0.0, 1.0);
+    vec3 sunriseAmber = vec3(1.0, 0.94, 0.82);
+    vec3 sssGlow = sunriseAmber * (sunSideGlow * 0.20 * rim);
+
+    vec3 finalRgb = clamp(litColor + silverLining + sssGlow, 0.0, 1.0);
+    float alpha = tex.a * vOpacity * uCloudDensity;
+
+    gl_FragColor = vec4(finalRgb, alpha);
+  }
+`;
+
+function createPuffGeometry(clusterCenter, clusterRadius, phase, baseOpacity) {
+  const geom = new THREE.PlaneGeometry(1, 1);
+  const count = geom.attributes.position.count;
+  const aClusterCenter = new Float32Array(count * 3);
+  const aClusterRadius = new Float32Array(count);
+  const aPhase = new Float32Array(count);
+  const aBaseOpacity = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    aClusterCenter[i * 3 + 0] = clusterCenter.x;
+    aClusterCenter[i * 3 + 1] = clusterCenter.y;
+    aClusterCenter[i * 3 + 2] = clusterCenter.z;
+    aClusterRadius[i] = clusterRadius;
+    aPhase[i] = phase;
+    aBaseOpacity[i] = baseOpacity;
+  }
+
+  geom.setAttribute('aClusterCenter', new THREE.BufferAttribute(aClusterCenter, 3));
+  geom.setAttribute('aClusterRadius', new THREE.BufferAttribute(aClusterRadius, 1));
+  geom.setAttribute('aPhase', new THREE.BufferAttribute(aPhase, 1));
+  geom.setAttribute('aBaseOpacity', new THREE.BufferAttribute(aBaseOpacity, 1));
+  return geom;
+}
+
 function buildVolumetricClouds() {
   while (cloudsGroup.children.length > 0) {
     cloudsGroup.remove(cloudsGroup.children[0]);
   }
-  cloudPuffs = [];
+  cloudMeshes = [];
 
-  // Create soft, multi-layered volumetric cumulus texture with sunlit top & azure shadow base
-  const cloudCanvas = document.createElement('canvas');
-  cloudCanvas.width = 512;
-  cloudCanvas.height = 512;
-  const cctx = cloudCanvas.getContext('2d');
-
-  const lobes = [
-    { x: 256, y: 245, r: 175, a: 0.72 },
-    { x: 175, y: 260, r: 145, a: 0.62 },
-    { x: 335, y: 260, r: 150, a: 0.62 },
-    { x: 215, y: 205, r: 135, a: 0.68 },
-    { x: 295, y: 210, r: 130, a: 0.65 },
-    { x: 256, y: 295, r: 155, a: 0.50 }
-  ];
-
-  lobes.forEach((l) => {
-    const grad = cctx.createRadialGradient(l.x, l.y - 18, 8, l.x, l.y, l.r);
-    grad.addColorStop(0.0, `rgba(255, 253, 250, ${l.a})`);
-    grad.addColorStop(0.45, `rgba(244, 249, 255, ${l.a * 0.65})`);
-    grad.addColorStop(0.78, `rgba(214, 230, 248, ${l.a * 0.25})`);
-    grad.addColorStop(1.0, 'rgba(200, 222, 245, 0)');
-    cctx.fillStyle = grad;
-    cctx.beginPath();
-    cctx.arc(l.x, l.y, l.r, 0, Math.PI * 2);
-    cctx.fill();
-  });
-
-  const cloudTex = new THREE.CanvasTexture(cloudCanvas);
+  // Load HD cumulus billow texture
+  const cloudTexLoader = new THREE.TextureLoader();
+  const cloudTex = cloudTexLoader.load(
+    '/assets/textures/cumulus_billow_hd.png',
+    undefined,
+    undefined,
+    () => {
+      // Fallback
+    }
+  );
   cloudTex.colorSpace = THREE.SRGBColorSpace;
 
-  const baseCloudMat = new THREE.SpriteMaterial({
-    map: cloudTex,
-    color: 0xffffff,
+  cloudShaderMat = new THREE.ShaderMaterial({
+    vertexShader: cloudVertexShader,
+    fragmentShader: cloudFragmentShader,
+    uniforms: {
+      uCloudTex: { value: cloudTex },
+      uSunDir: { value: new THREE.Vector3(-0.55, 0.78, 0.38).normalize() },
+      uSunColor: { value: new THREE.Color(0xffffff).multiplyScalar(1.25) },
+      uShadowColor: { value: new THREE.Color(0xdbeafe) },
+      uSkyColor: { value: new THREE.Color(0xfff1e6) },
+      uCloudDensity: { value: 1.0 },
+      uTime: { value: 0.0 }
+    },
     transparent: true,
-    opacity: 0.62,
     depthWrite: false,
-    blending: THREE.NormalBlending
+    depthTest: true,
+    blending: THREE.NormalBlending,
+    side: THREE.DoubleSide
   });
 
-  // 1. Volumetric Clouds surrounding the Pagoda & Upper Platform (without blocking camera view)
-  const pagodaPos = ueToThreePos(75650.0, 85630.0, 44840.0);
-  const ringCount = 24;
-  for (let i = 0; i < ringCount; i++) {
-    const angle = (i * Math.PI * 2) / ringCount;
-    // Skip the front-right viewing corridor where the platforms cascade toward the camera
-    if (Math.sin(angle) > 0.15 && Math.cos(angle) > -0.35) continue;
-    const radius = 15.5 + (i % 3) * 3.5;
+  const addCloudCluster = (def) => {
+    const { center, radius, lobeCount = 18, baseScale = 10.0, heightSpread = 2.8, driftSpeed = 0.003 } = def;
 
-    const mat = baseCloudMat.clone();
-    mat.opacity = 0.52;
-    const sprite = new THREE.Sprite(mat);
+    for (let i = 0; i < lobeCount; i++) {
+      let rx, ry, rz, s, opacity;
+      const isCore = (i < Math.max(4, Math.floor(lobeCount * 0.35)));
 
-    const cx = pagodaPos.x + Math.cos(angle) * radius;
-    const cy = pagodaPos.y - 1.5 + Math.sin(i * 1.7) * 2.0;
-    const cz = pagodaPos.z + Math.sin(angle) * radius;
+      if (isCore) {
+        const angle = (i * Math.PI * 2) / 4;
+        const dist = (radius * 0.28) * Math.random();
+        rx = center.x + Math.cos(angle) * dist;
+        rz = center.z + Math.sin(angle) * dist;
+        ry = center.y + (Math.random() - 0.35) * (heightSpread * 0.45);
+        s = baseScale * (1.15 + Math.random() * 0.35);
+        opacity = 0.92 + Math.random() * 0.06;
+      } else {
+        const angle = (i * 2.39996) + Math.random() * 0.45;
+        const radDist = (radius * 0.35) + Math.random() * (radius * 0.65);
+        rx = center.x + Math.cos(angle) * radDist;
+        rz = center.z + Math.sin(angle) * radDist;
 
-    sprite.position.set(cx, cy, cz);
-    const scale = 10.5 + (i % 4) * 2.8;
-    sprite.scale.set(scale * 1.35, scale * 0.85, 1);
+        const isTopLobe = (i % 3 === 0);
+        if (isTopLobe) {
+          ry = center.y + (0.35 + Math.random() * 0.65) * heightSpread;
+          s = baseScale * (0.75 + Math.random() * 0.30);
+          opacity = 0.94; // Crisp sunlit billow dome
+        } else {
+          ry = center.y - (0.2 + Math.random() * 0.55) * heightSpread;
+          s = baseScale * (0.90 + Math.random() * 0.40);
+          opacity = 0.78 + Math.random() * 0.15;
+        }
+      }
 
-    sprite.userData = {
-      baseAngle: angle,
-      radius,
-      center: { x: pagodaPos.x, z: pagodaPos.z },
-      speed: 0.008 * (i % 2 === 0 ? 1 : -1),
-      verticalFreq: 0.35 + (i % 4) * 0.1,
-      initY: cy,
-      baseOpacity: mat.opacity
-    };
+      const phase = Math.random() * Math.PI * 2;
+      const geom = createPuffGeometry(center, radius, phase, opacity);
+      const mesh = new THREE.Mesh(geom, cloudShaderMat);
+      mesh.position.set(rx, ry, rz);
+      mesh.scale.set(s * 1.35, s * 0.88, 1.0);
 
-    cloudsGroup.add(sprite);
-    cloudPuffs.push(sprite);
-  }
-
-  // 2. Volumetric Cloud Clusters flanking the outer edges & underside of the 3 Floating Platforms
-  const platformCenters = [
-    { pos: ueToThreePos(75720.0, 85990.0, 44810.0), r: 11.5 },
-    { pos: ueToThreePos(75720.0, 85870.0, 44820.0), r: 14.0 },
-    { pos: ueToThreePos(75620.0, 85790.0, 44830.0), r: 14.5 }
-  ];
-
-  platformCenters.forEach((plat, pIdx) => {
-    const count = 10;
-    for (let k = 0; k < count; k++) {
-      const angle = (k * Math.PI * 2) / count + pIdx * 0.5;
-      // Avoid placing cloud sprites directly in front of the platform decks along the camera ray
-      if (Math.sin(angle) > 0.25 && Math.cos(angle) > -0.25) continue;
-      const pr = plat.r + 2.5 + (k % 3) * 2.5;
-      const mat = baseCloudMat.clone();
-      mat.opacity = 0.45;
-      const sprite = new THREE.Sprite(mat);
-
-      const sx = plat.pos.x + Math.cos(angle) * pr;
-      const sy = plat.pos.y - 3.8 + Math.cos(k * 1.3) * 0.8;
-      const sz = plat.pos.z + Math.sin(angle) * pr;
-
-      sprite.position.set(sx, sy, sz);
-      const scale = 8.5 + (k % 3) * 2.2;
-      sprite.scale.set(scale * 1.3, scale * 0.8, 1);
-
-      sprite.userData = {
-        baseAngle: angle,
-        radius: pr,
-        center: { x: plat.pos.x, z: plat.pos.z },
-        speed: 0.006,
-        verticalFreq: 0.3 + (k % 3) * 0.1,
-        initY: sy,
-        baseOpacity: mat.opacity
+      mesh.userData = {
+        clusterCenter: center,
+        initPos: new THREE.Vector3(rx, ry, rz),
+        driftRadius: Math.hypot(rx - center.x, rz - center.z),
+        baseAngle: Math.atan2(rz - center.z, rx - center.x),
+        driftSpeed: driftSpeed * (i % 2 === 0 ? 1 : -1),
+        vFreq: 0.18 + Math.random() * 0.12,
+        vAmp: 0.16 + Math.random() * 0.12,
+        phase: phase
       };
 
-      cloudsGroup.add(sprite);
-      cloudPuffs.push(sprite);
+      cloudsGroup.add(mesh);
+      cloudMeshes.push(mesh);
     }
+  };
+
+  // =========================================================================
+  // 【Formation 1: 浩瀚云海大底 (Vast Rolling Cloud Sea)】
+  // 覆盖整个下界空间，形成如同油画参考图般的无尽层叠积云浪涌
+  // =========================================================================
+  const seaGrid = [
+    [-52, -45], [-35, -48], [-18, -45], [0, -48], [18, -45], [35, -48], [52, -45],
+    [-45, -28], [-28, -30], [-10, -28], [8, -30], [26, -28], [44, -30],
+    [-48, -10], [-30, -12], [-12, -10], [6, -12], [24, -10], [42, -12],
+    [-42, 8],   [-24, 6],   [-6, 8],    [12, 6],  [30, 8],   [48, 8],
+    [-35, 25],  [-18, 22],  [0, 25],    [18, 22], [36, 25],
+    [-25, 42],  [-8, 40],   [10, 42],   [28, 40]
+  ];
+
+  seaGrid.forEach(([gx, gz], idx) => {
+    const waveY = -8.2 + Math.sin(gx * 0.08 + gz * 0.06) * 1.8;
+    const waveR = 12.0 + (idx % 4) * 2.5;
+    addCloudCluster({
+      center: { x: gx, y: waveY, z: gz },
+      radius: waveR,
+      lobeCount: 16,
+      baseScale: 10.5,
+      heightSpread: 2.8,
+      driftSpeed: 0.0025 * ((idx % 2 === 0) ? 1 : -1)
+    });
   });
 
-  // 3. Distant Sea of Clouds below the floating islands
-  const seaCount = 20;
-  for (let j = 0; j < seaCount; j++) {
-    const angle = (j * Math.PI * 2) / seaCount;
-    const r = 26 + (j % 4) * 8;
-    const mat = baseCloudMat.clone();
-    mat.opacity = 0.42;
-    const sprite = new THREE.Sprite(mat);
+  // =========================================================================
+  // 【Formation 2: 右侧巍峨耸立的巨型积雨云山群 (Grand Towering Cumulus Mountain)】
+  // 参考画作最核心特征：右侧自云海拔地而起、高耸直插天际的九天仙峦积云柱
+  // =========================================================================
+  // A. 基础涌云 (Base Tier: y=-3 ~ 2, 雄浑基座)
+  addCloudCluster({ center: { x: 22.0, y: -2.5, z: -8.0 }, radius: 15.0, lobeCount: 22, baseScale: 12.5, heightSpread: 3.5, driftSpeed: 0.002 });
+  addCloudCluster({ center: { x: 34.0, y: -1.5, z: 2.0 },  radius: 16.0, lobeCount: 22, baseScale: 13.0, heightSpread: 3.5, driftSpeed: -0.002 });
 
-    const sx = Math.cos(angle) * r;
-    const sy = -6.5 - (j % 3) * 2.0;
-    const sz = Math.sin(angle) * r - 4.0;
+  // B. 巨峰腰部 (Mid Tier: y=4 ~ 12, 浪涌云腰)
+  addCloudCluster({ center: { x: 25.0, y: 6.0, z: -6.0 },  radius: 14.0, lobeCount: 20, baseScale: 12.0, heightSpread: 3.5, driftSpeed: 0.002 });
+  addCloudCluster({ center: { x: 36.0, y: 8.5, z: 0.0 },   radius: 15.0, lobeCount: 20, baseScale: 12.5, heightSpread: 3.8, driftSpeed: -0.002 });
+  addCloudCluster({ center: { x: 44.0, y: 7.0, z: -10.0 }, radius: 14.0, lobeCount: 18, baseScale: 11.5, heightSpread: 3.5, driftSpeed: 0.002 });
 
-    sprite.position.set(sx, sy, sz);
-    const scale = 18 + (j % 4) * 5;
-    sprite.scale.set(scale * 1.4, scale * 0.85, 1);
+  // C. 冲天云柱 (Tower Tier: y=13 ~ 22, 直插青天)
+  addCloudCluster({ center: { x: 27.0, y: 15.5, z: -5.0 }, radius: 12.5, lobeCount: 18, baseScale: 11.0, heightSpread: 3.5, driftSpeed: 0.0018 });
+  addCloudCluster({ center: { x: 38.0, y: 17.0, z: -1.0 }, radius: 13.0, lobeCount: 18, baseScale: 11.5, heightSpread: 3.8, driftSpeed: -0.0018 });
 
-    sprite.userData = {
+  // D. 晴空云冠 (Sky Crown Peaks: y=23 ~ 30, 耀眼金顶对映深蓝晴空)
+  addCloudCluster({ center: { x: 29.0, y: 24.5, z: -4.0 }, radius: 10.5, lobeCount: 16, baseScale: 10.0, heightSpread: 3.2, driftSpeed: 0.0015 });
+  addCloudCluster({ center: { x: 39.0, y: 26.0, z: 1.0 },  radius: 10.0, lobeCount: 16, baseScale: 9.5,  heightSpread: 3.0, driftSpeed: -0.0015 });
+
+  // =========================================================================
+  // 【Formation 3: 左侧朝曦晨光逆光祥云海 (Left Morning Sunrise Cloud Banks)】
+  // 主楼后方与左侧受晨光照射的朝霞金色祥云屏障
+  // =========================================================================
+  addCloudCluster({ center: { x: -26.0, y: -2.0, z: -14.0 }, radius: 14.5, lobeCount: 22, baseScale: 12.5, heightSpread: 3.5, driftSpeed: 0.002 });
+  addCloudCluster({ center: { x: -38.0, y: 5.0,  z: -18.0 }, radius: 15.5, lobeCount: 22, baseScale: 13.0, heightSpread: 3.8, driftSpeed: -0.002 });
+  addCloudCluster({ center: { x: -22.0, y: 10.5, z: -8.0 },  radius: 12.0, lobeCount: 18, baseScale: 10.5, heightSpread: 3.2, driftSpeed: 0.002 });
+  addCloudCluster({ center: { x: -34.0, y: 15.0, z: -12.0 }, radius: 11.0, lobeCount: 16, baseScale: 10.0, heightSpread: 3.0, driftSpeed: -0.002 });
+
+  // =========================================================================
+  // 【Formation 4: 浮岛平台与石阶托底祥云 (Platform Underpinning Cushions)】
+  // 紧贴平台边缘与飞桥峡谷，呈现云端悬浮感
+  // =========================================================================
+  const p1Pos = ueToThreePos(75720.0, 85990.0, 44810.0);
+  addCloudCluster({
+    center: { x: p1Pos.x + 0.5, y: p1Pos.y - 4.4, z: p1Pos.z + 1.2 },
+    radius: 9.5,
+    lobeCount: 18,
+    baseScale: 9.0,
+    heightSpread: 2.4,
+    driftSpeed: 0.003
+  });
+
+  // 飞阶飞桥峡谷涌云
+  addCloudCluster({ center: { x: 7.2, y: -4.5, z: 9.0 }, radius: 8.5, lobeCount: 16, baseScale: 8.5, heightSpread: 2.2, driftSpeed: -0.003 });
+  addCloudCluster({ center: { x: 2.2, y: -4.2, z: 4.8 }, radius: 8.0, lobeCount: 15, baseScale: 8.0, heightSpread: 2.0, driftSpeed: 0.003 });
+
+  // 平台 3 (中台) 托底云
+  const p3Pos = ueToThreePos(75720.0, 85870.0, 44820.0);
+  addCloudCluster({
+    center: { x: p3Pos.x - 2.5, y: p3Pos.y - 4.0, z: p3Pos.z + 0.5 },
+    radius: 10.0,
+    lobeCount: 18,
+    baseScale: 9.5,
+    heightSpread: 2.5,
+    driftSpeed: 0.003
+  });
+
+  // 平台 2 (高台) 托底云
+  const p2Pos = ueToThreePos(75620.0, 85790.0, 44830.0);
+  addCloudCluster({
+    center: { x: p2Pos.x + 1.5, y: p2Pos.y - 3.8, z: p2Pos.z - 1.0 },
+    radius: 11.0,
+    lobeCount: 20,
+    baseScale: 10.0,
+    heightSpread: 2.6,
+    driftSpeed: -0.003
+  });
+
+  // 主楼金莲底座环绕云
+  const pagodaPos = ueToThreePos(75650.0, 85630.0, 44840.0);
+  addCloudCluster({
+    center: { x: pagodaPos.x, y: pagodaPos.y - 2.6, z: pagodaPos.z },
+    radius: 13.5,
+    lobeCount: 24,
+    baseScale: 11.5,
+    heightSpread: 3.0,
+    driftSpeed: 0.002
+  });
+
+  // =========================================================================
+  // 【Formation 5: 远方环天平流积云山脉 (Horizon Cumulus Mountain Ring)】
+  // =========================================================================
+  const horizonCount = 36;
+  const horizonCenter = { x: -2.0, z: -10.0 };
+  for (let h = 0; h < horizonCount; h++) {
+    const angle = (h * Math.PI * 2) / horizonCount;
+    const hr = 55.0 + (h % 5) * 9.0 + Math.sin(h * 1.7) * 5.0;
+    const hx = horizonCenter.x + Math.cos(angle) * hr;
+    const hz = horizonCenter.z + Math.sin(angle) * hr;
+    const hy = -8.0 + (h % 3) * 2.0 + Math.sin(h * 2.1) * 1.2;
+    const hs = 16.0 + (h % 4) * 4.0;
+
+    const phase = h * 0.3;
+    const geom = createPuffGeometry({ x: hx, y: hy, z: hz }, hs * 0.8, phase, 0.78);
+    const mesh = new THREE.Mesh(geom, cloudShaderMat);
+    mesh.position.set(hx, hy, hz);
+    mesh.scale.set(hs * 1.45, hs * 0.85, 1.0);
+    mesh.userData = {
+      clusterCenter: { x: hx, y: hy, z: hz },
+      initPos: new THREE.Vector3(hx, hy, hz),
+      driftRadius: hr,
       baseAngle: angle,
-      radius: r,
-      center: { x: 0, z: -4.0 },
-      speed: 0.01 + (j % 3) * 0.004,
-      verticalFreq: 0.22,
-      initY: sy,
-      baseOpacity: mat.opacity
+      driftSpeed: 0.0015 * (h % 2 === 0 ? 1 : -1),
+      vFreq: 0.12,
+      vAmp: 0.22,
+      phase: phase
     };
-
-    cloudsGroup.add(sprite);
-    cloudPuffs.push(sprite);
+    cloudsGroup.add(mesh);
+    cloudMeshes.push(mesh);
   }
 }
 
 function updateClouds(delta, elapsed) {
-  cloudPuffs.forEach((puff) => {
-    const ud = puff.userData;
-    ud.baseAngle += ud.speed * delta;
-    puff.position.x = ud.center.x + Math.cos(ud.baseAngle) * ud.radius;
-    puff.position.z = ud.center.z + Math.sin(ud.baseAngle) * ud.radius;
-    puff.position.y = ud.initY + Math.sin(elapsed * ud.verticalFreq) * 0.35;
+  if (cloudShaderMat) {
+    cloudShaderMat.uniforms.uTime.value = elapsed;
+    cloudShaderMat.uniforms.uSunDir.value.copy(dirLight.position).normalize();
+  }
+
+  // 云团微动态公转与呼吸起伏
+  cloudMeshes.forEach((mesh) => {
+    const ud = mesh.userData;
+    if (!ud) return;
+    ud.baseAngle += ud.driftSpeed * delta;
+    mesh.position.x = ud.clusterCenter.x + Math.cos(ud.baseAngle) * ud.driftRadius;
+    mesh.position.z = ud.clusterCenter.z + Math.sin(ud.baseAngle) * ud.driftRadius;
+    mesh.position.y = ud.initPos.y + Math.sin(elapsed * ud.vFreq + ud.phase) * ud.vAmp;
   });
 
   lanternLights.forEach((light, idx) => {
@@ -776,15 +1077,15 @@ function setupInteractionEvents() {
     state.cloudDensityMode = (state.cloudDensityMode + 1) % 3;
     if (state.cloudDensityMode === 0) {
       cloudsGroup.visible = true;
-      cloudPuffs.forEach(p => { p.material.opacity = p.userData.baseOpacity; });
-      showToast('体积云模式：仙境浓云（建筑四周环绕体积云海）');
+      if (cloudShaderMat) cloudShaderMat.uniforms.uCloudDensity.value = 1.0;
+      showToast('立体云模式：仙阙祥云（朵朵立体祥云环绕仙阁）');
     } else if (state.cloudDensityMode === 1) {
       cloudsGroup.visible = true;
-      cloudPuffs.forEach(p => { p.material.opacity = p.userData.baseOpacity * 0.45; });
-      showToast('体积云模式：灵空轻雾（半透明薄雾环绕）');
+      if (cloudShaderMat) cloudShaderMat.uniforms.uCloudDensity.value = 0.45;
+      showToast('立体云模式：灵空薄岚（轻灵半透薄云）');
     } else {
       cloudsGroup.visible = false;
-      showToast('体积云模式：晴空微霁（隐藏体积云）');
+      showToast('立体云模式：晴空万里（隐藏云层）');
     }
   };
 
